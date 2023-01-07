@@ -132,4 +132,10 @@ impl Db {
             None => Ok(())
         }
     }
+    pub fn remove_group(&mut self, initiator_id: i32, group_id: i32) -> Result<(), Error> {
+        self.check_user_is_admin(initiator_id, group_id)?;
+        self.groups_users.retain(|gu| gu.group_id != group_id);
+        self.groups.retain(|g| g.id != group_id);
+        Ok(())
+    }
 }
