@@ -1,7 +1,7 @@
-use actix_web::{Responder, HttpResponse, post};
-use actix_web::web::{Json, Data};
+use actix_web::{Responder, HttpResponse, post, get};
+use actix_web::web::{Json, Data, Query};
 use std::sync::Mutex;
-use crate::api_models::{AppointSecretSantas, CreateGroup, CreateUser, JoinGroup, LeaveGroup, MakeUserAdmin, MakeUserNonadmin, RemoveGroup, Response};
+use crate::api_models::{AppointSecretSantas, CreateGroup, CreateUser, JoinGroup, LeaveGroup, MakeUserAdmin, MakeUserNonadmin, RemoveGroup, Response, WhosAmISanta};
 use crate::db::{Db};
 use serde::Serialize;
 
@@ -70,5 +70,20 @@ pub async fn remove_group(req: Json<RemoveGroup>, db: Data<Mutex<Db>>) -> impl R
 pub async fn appoint_secret_santas(req: Json<AppointSecretSantas>, db: Data<Mutex<Db>>) -> impl Responder {
     let mut db = db.lock().unwrap();
     let resp = Response::<()>::from(db.appoint_secret_santas(req.initiator_id, req.group_id));
+    HttpResponse::Ok().json(&resp)
+}
+
+#[derive(Serialize)]
+struct WhosAmISantaResponse {
+    pub user_id: i32
+}
+
+#[get("/whosamisanta")]
+pub async fn whos_am_i_santa(query: Query<WhosAmISanta>, db: Data<Mutex<Db>>) -> impl Responder {
+    let db = db.lock().unwrap();
+    let resp = Response::<WhosAmISantaResponse>::from(
+        db.whos_am_i_santa(query.initiator_id, query.group_id)
+            .map(|user_id| WhosAmISantaResponse { user_id })
+    );
     HttpResponse::Ok().json(&resp)
 }

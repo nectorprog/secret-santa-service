@@ -16,4 +16,6 @@ pub enum Error {
     NoOtherAdminsInGroup{ user_id: i32, group_id: i32},
     #[error("Группа {0} закрыта")]
     GroupIsClosed(i32),
+    #[error("Группа {0} еще не закрыта")]
+    GroupIsNotClosed(i32),
 }
