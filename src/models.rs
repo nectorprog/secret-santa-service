@@ -18,3 +18,9 @@ pub struct GroupUser {
     pub group_id: i32,
     pub is_admin: bool,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct Santa {
+    pub santa_id: i32,
+    pub user_id: i32,
+}
