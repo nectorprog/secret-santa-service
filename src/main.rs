@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use actix_web::{App, HttpServer};
 use db::Db;
 use actix_web::web::Data;
-use crate::handlers::create_user;
+use crate::handlers::{create_group, create_user};
 
 #[actix_web::main]
 async fn main() {
@@ -16,6 +16,7 @@ async fn main() {
         App::new()
             .app_data(db.clone())
             .service(create_user)
+            .service(create_group)
     })
         .bind(("127.0.0.1", 8000))
         .unwrap()
