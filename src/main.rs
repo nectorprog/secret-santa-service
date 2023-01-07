@@ -2,6 +2,7 @@ mod db;
 mod models;
 mod api_models;
 mod handlers;
+mod error;
 
 use std::sync::Mutex;
 use actix_web::{App, HttpServer};

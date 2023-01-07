@@ -1,5 +1,5 @@
 use crate::models::{Group, GroupUser, User};
-use serde::Serialize;
+use super::error::Error;
 
 #[derive(Default)]
 pub struct Db {
@@ -8,20 +8,6 @@ pub struct Db {
     groups: Vec<Group>,
     max_group_id: i32,
     groups_users: Vec<GroupUser>,
-}
-
-#[derive(Serialize, Default)]
-pub struct Response<E: Serialize> {
-    pub status: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
-    #[serde(flatten)]
-    pub extra: E,
-}
-
-#[derive(Serialize)]
-pub struct CreatedGroup {
-    pub group_id: i32,
 }
 
 impl Db {
@@ -40,46 +26,27 @@ impl Db {
     pub fn find_user_group(&self, user_id: i32, group_id: i32) -> Option<&GroupUser> {
         self.groups_users.iter().find(|gu| gu.user_id == user_id && gu.group_id == group_id)
     }
-    pub fn create_user(&mut self, name: String) -> Response<()> {
+    pub fn create_user(&mut self, name: String) -> Result<i32, Error> {
         match self.find_user_by_name(&name) {
+            Some(_) => { Err(Error::UserAlreadyExists(name)) },
             None => {
                 self.max_user_id += 1;
                 let user_id = self.max_user_id;
                 self.users.push(User {id: user_id, name});
-                Response {
-                    status: true,
-                    ..Default::default()
-                }
-            },
-            Some(_) => {
-                Response {
-                    status: false,
-                    message: Some("Пользователь с таким именем уже существует".to_string()),
-                    ..Default::default()
-                }
+                Ok(user_id)
             }
         }
     }
-    pub fn create_group(&mut self, initiator_id: i32, group_name: String) -> Response<Option<CreatedGroup>> {
-        if self.find_group_by_name(&group_name).is_some() {
-            return Response {
-                status: false,
-                message: Some("Группа с таким именем уже существует".to_string()),
-                ..Default::default()
-            }
-        };
-        if self.find_user_by_id(initiator_id).is_none() {
-            return Response {
-                status: false,
-                message: Some("Не найден пользователь с таким id".to_string()),
-                ..Default::default()
-            }
+    pub fn create_group(&mut self, initiator_id: i32, name: String) -> Result<i32, Error> {
+        if self.find_group_by_name(&name).is_some() {
+            return Err(Error::GroupAlreadyExists(name))
         }
+        self.find_user_by_id(initiator_id).ok_or(Error::UserNotFound(initiator_id))?;
         self.max_group_id += 1;
         let group_id = self.max_group_id;
         self.groups.push(Group {
             id: group_id,
-            name: group_name,
+            name,
             is_closed: false,
         });
         self.groups_users.push(GroupUser {
@@ -87,78 +54,32 @@ impl Db {
             group_id,
             is_admin: true
         });
-        Response {
-            status: true,
-            extra: Some(CreatedGroup { group_id }),
-            ..Default::default()
-        }
+        Ok(group_id)
     }
-    pub fn join_group(&mut self, user_id: i32, group_id: i32) -> Response<()> {
-        if self.find_user_by_id(user_id).is_none() {
-            return Response {
-                status: false,
-                message: Some("Не найден пользователь с таким id".to_string()),
-                ..Default::default()
-            }
-        };
-        if self.find_group_by_id(group_id).is_none() {
-            return Response {
-                status: false,
-                message: Some("Группа с таким id не найдена".to_string()),
-                ..Default::default()
-            }
-        };
+    pub fn join_group(&mut self, user_id: i32, group_id: i32) -> Result<(), Error> {
+        self.find_user_by_id(user_id).ok_or(Error::UserNotFound(user_id))?;
+        self.find_group_by_id(group_id).ok_or(Error::GroupNotFound(group_id))?;
         if self.find_user_group(user_id, group_id).is_none() {
             self.groups_users.push(GroupUser {
                 user_id, group_id,
                 is_admin: false
             })
         };
-        Response {
-            status: true,
-            ..Default::default()
+        Ok(())
+    }
+    fn check_user_is_admin(&self, user_id: i32, group_id: i32) -> Result<(), Error> {
+        self.find_user_by_id(user_id).ok_or(Error::UserNotFound(user_id))?;
+        self.find_group_by_id(group_id).ok_or(Error::GroupNotFound(group_id))?;
+        match self.find_user_group(user_id, group_id).map(|ug| ug.is_admin) {
+            Some(false) => {
+                Err(Error::UserIsNotAdmin {user_id, group_id})
+            },
+            Some(true) => Ok(()),
+            None => Err(Error::UserIsNotInGroup {user_id, group_id })
         }
     }
-    pub fn make_user_admin(&mut self, initiator_id: i32, user_id: i32, group_id: i32) -> Response<()>{
-        if self.find_user_by_id(initiator_id).is_none() {
-            return Response {
-                status: false,
-                message: Some("Инициатор не найден".to_string()),
-                ..Default::default()
-            }
-        }
-        if self.find_user_by_id(user_id).is_none() {
-            return Response {
-                status: false,
-                message: Some("Пользователь с таким id не найден".to_string()),
-                ..Default::default()
-            }
-        }
-        if self.find_group_by_id(group_id).is_none() {
-            return Response {
-                status: false,
-                message: Some("Группа с таким id не найдена".to_string()),
-                ..Default::default()
-            }
-        }
-        match self.find_user_group(initiator_id, group_id) {
-            Some(gu) => {
-                if !gu.is_admin {
-                    return Response {
-                        status: false,
-                        message: Some("Инициатор не является администратором группы".to_string()),
-                        ..Default::default()
-                    }
-                }
-            },
-            None => {
-                return Response {
-                    status: false,
-                    message: Some("Инициатор не относится к группе".to_string()),
-                    ..Default::default()
-                }
-            }
-        }
+    pub fn make_user_admin(&mut self, initiator_id: i32, user_id: i32, group_id: i32) -> Result<(), Error> {
+        self.check_user_is_admin(initiator_id, group_id)?;
         match self.groups_users.iter_mut().find(|gu| gu.user_id == user_id && gu.group_id == group_id) {
             Some(gu) => {
                 gu.is_admin = true
@@ -170,73 +91,45 @@ impl Db {
                 })
             }
         }
-        Response {
-            status: true,
-            ..Default::default()
-        }
+        Ok(())
     }
     pub fn has_other_admin(&mut self, user_id: i32, group_id: i32) -> bool {
         self.groups_users
             .iter()
             .any(|gu| gu.group_id == group_id && gu.user_id != user_id && gu.is_admin)
     }
-    pub fn make_user_nonadmin(&mut self, user_id: i32, group_id: i32) -> Response<()> {
+    pub fn make_user_nonadmin(&mut self, user_id: i32, group_id: i32) -> Result<(), Error> {
+        self.check_user_is_admin(user_id, group_id)?;
         if !self.has_other_admin(user_id, group_id) {
-            return Response {
-                status: false,
-                message: Some("В группе нет других администраторов".to_string()),
-                ..Default::default()
-            }
+            return Err(Error::NoOtherAdminsInGroup {user_id, group_id})
         }
         if let Some(gu) =  self.groups_users.iter_mut().find(|gu| gu.user_id == user_id && gu.group_id == group_id) {
             gu.is_admin = false;
         }
-        Response {
-            status: true,
-            ..Default::default()
-        }
+        Ok(())
     }
-    pub fn leave_group(&mut self, user_id: i32, group_id: i32) -> Response<()> {
+    pub fn leave_group(&mut self, user_id: i32, group_id: i32) -> Result<(), Error> {
         if !self.has_other_admin(user_id, group_id) {
-            return Response {
-                status: false,
-                message: Some("В группе нет других администраторов".to_string()),
-                ..Default::default()
-            }
+            return Err(Error::NoOtherAdminsInGroup { user_id, group_id })
         }
         match self.find_group_by_id(group_id).map(|g| g.is_closed) {
-            Some(true) => {
-                return Response {
-                    status: false,
-                    message: Some("Группа закрыта - из нее невозможно выйти".to_string()),
-                    ..Default::default()
-                }
-            },
-            None => {
-                return Response {
-                    status: false,
-                    message: Some("Группа не найдена".to_string()),
-                    ..Default::default()
-                }
-            },
+            Some(true) => return Err(Error::GroupIsClosed(group_id)),
+            None => return Err(Error::GroupNotFound(group_id)),
             _ => ()
         };
         let index = self.groups_users
             .iter()
             .position(|gu| gu.user_id == user_id && gu.group_id == group_id);
-        if let Some(index) = index {
-            if !self.groups_users[index].is_admin {
-                return Response {
-                    status: false,
-                    message: Some("У пользователя нет прав администратора".to_string()),
-                    ..Default::default()
+        match index {
+            Some(i) => {
+                if self.groups_users[i].is_admin {
+                    self.groups_users.swap_remove(i);
+                    Ok(())
+                } else {
+                    Err(Error::UserIsNotAdmin {user_id, group_id})
                 }
-            }
-            self.groups_users.swap_remove(index);
-        }
-        Response {
-            status: true,
-            ..Default::default()
+            },
+            None => Ok(())
         }
     }
 }
