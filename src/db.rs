@@ -1,5 +1,7 @@
-use crate::models::{Group, GroupUser, User};
+use crate::models::{Group, GroupUser, Santa, User};
 use super::error::Error;
+use rand::rngs::OsRng;
+use rand::seq::SliceRandom;
 
 #[derive(Default)]
 pub struct Db {
@@ -8,6 +10,7 @@ pub struct Db {
     groups: Vec<Group>,
     max_group_id: i32,
     groups_users: Vec<GroupUser>,
+    santas: Vec<Santa>,
 }
 
 impl Db {
@@ -136,6 +139,25 @@ impl Db {
         self.check_user_is_admin(initiator_id, group_id)?;
         self.groups_users.retain(|gu| gu.group_id != group_id);
         self.groups.retain(|g| g.id != group_id);
+        Ok(())
+    }
+    pub fn appoint_secret_santas(&mut self, initiator_id: i32, group_id: i32) -> Result<(), Error> {
+        self.check_user_is_admin(initiator_id, group_id)?;
+        let user_ids = self.groups_users
+            .iter()
+            .filter_map(|gu| {
+                if gu.group_id == group_id {
+                    Some(gu.user_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let mut santa_ids = user_ids.clone();
+        santa_ids.shuffle(&mut OsRng);
+        for (user_id, santa_id) in user_ids.into_iter().zip(santa_ids.into_iter()) {
+            self.santas.push(Santa {user_id, santa_id})
+        }
         Ok(())
     }
 }
