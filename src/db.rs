@@ -119,4 +119,60 @@ impl Db {
             ..Default::default()
         }
     }
+    pub fn make_user_admin(&mut self, initiator_id: i32, user_id: i32, group_id: i32) -> Response<()>{
+        if self.find_user_by_id(initiator_id).is_none() {
+            return Response {
+                status: false,
+                message: Some("Инициатор не найден".to_string()),
+                ..Default::default()
+            }
+        }
+        if self.find_user_by_id(user_id).is_none() {
+            return Response {
+                status: false,
+                message: Some("Пользователь с таким id не найден".to_string()),
+                ..Default::default()
+            }
+        }
+        if self.find_group_by_id(group_id).is_none() {
+            return Response {
+                status: false,
+                message: Some("Группа с таким id не найдена".to_string()),
+                ..Default::default()
+            }
+        }
+        match self.find_user_group(initiator_id, group_id) {
+            Some(gu) => {
+                if !gu.is_admin {
+                    return Response {
+                        status: false,
+                        message: Some("Инициатор не является администратором группы".to_string()),
+                        ..Default::default()
+                    }
+                }
+            },
+            None => {
+                return Response {
+                    status: false,
+                    message: Some("Инициатор не относится к группе".to_string()),
+                    ..Default::default()
+                }
+            }
+        }
+        match self.groups_users.iter_mut().find(|gu| gu.user_id == user_id && gu.group_id == group_id) {
+            Some(gu) => {
+                gu.is_admin = true
+            },
+            None => {
+                self.groups_users.push(GroupUser {
+                    user_id, group_id,
+                    is_admin: true
+                })
+            }
+        }
+        Response {
+            status: true,
+            ..Default::default()
+        }
+    }
 }
