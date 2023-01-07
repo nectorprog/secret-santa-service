@@ -175,11 +175,13 @@ impl Db {
             ..Default::default()
         }
     }
-    pub fn make_user_nonadmin(&mut self, user_id: i32, group_id: i32) -> Response<()> {
-        let has_other_admin = self.groups_users
+    pub fn has_other_admin(&mut self, user_id: i32, group_id: i32) -> bool {
+        self.groups_users
             .iter()
-            .any(|gu| gu.group_id == group_id && gu.user_id != user_id && gu.is_admin);
-        if !has_other_admin {
+            .any(|gu| gu.group_id == group_id && gu.user_id != user_id && gu.is_admin)
+    }
+    pub fn make_user_nonadmin(&mut self, user_id: i32, group_id: i32) -> Response<()> {
+        if !self.has_other_admin(user_id, group_id) {
             return Response {
                 status: false,
                 message: Some("В группе нет других администраторов".to_string()),
@@ -188,6 +190,49 @@ impl Db {
         }
         if let Some(gu) =  self.groups_users.iter_mut().find(|gu| gu.user_id == user_id && gu.group_id == group_id) {
             gu.is_admin = false;
+        }
+        Response {
+            status: true,
+            ..Default::default()
+        }
+    }
+    pub fn leave_group(&mut self, user_id: i32, group_id: i32) -> Response<()> {
+        if !self.has_other_admin(user_id, group_id) {
+            return Response {
+                status: false,
+                message: Some("В группе нет других администраторов".to_string()),
+                ..Default::default()
+            }
+        }
+        match self.find_group_by_id(group_id).map(|g| g.is_closed) {
+            Some(true) => {
+                return Response {
+                    status: false,
+                    message: Some("Группа закрыта - из нее невозможно выйти".to_string()),
+                    ..Default::default()
+                }
+            },
+            None => {
+                return Response {
+                    status: false,
+                    message: Some("Группа не найдена".to_string()),
+                    ..Default::default()
+                }
+            },
+            _ => ()
+        };
+        let index = self.groups_users
+            .iter()
+            .position(|gu| gu.user_id == user_id && gu.group_id == group_id);
+        if let Some(index) = index {
+            if !self.groups_users[index].is_admin {
+                return Response {
+                    status: false,
+                    message: Some("У пользователя нет прав администратора".to_string()),
+                    ..Default::default()
+                }
+            }
+            self.groups_users.swap_remove(index);
         }
         Response {
             status: true,

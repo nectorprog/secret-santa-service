@@ -2,7 +2,7 @@ use actix_web::{Responder, HttpResponse, post, get};
 use actix_web::web::{Json, Data};
 use anyhow::anyhow;
 use std::sync::Mutex;
-use crate::api_models::{CreateGroup, CreateUser, JoinGroup, MakeUserAdmin, MakeUserNonadmin};
+use crate::api_models::{CreateGroup, CreateUser, JoinGroup, LeaveGroup, MakeUserAdmin, MakeUserNonadmin};
 use crate::db::{Db};
 
 #[post("/createuser")]
@@ -34,4 +34,10 @@ pub async fn make_user_admin(req: Json<MakeUserAdmin>, db: Data<Mutex<Db>>) -> i
 pub async fn make_user_nonadmin(req: Json<MakeUserNonadmin>, db: Data<Mutex<Db>>) -> impl Responder {
     let mut db = db.lock().unwrap();
     HttpResponse::Ok().json(db.make_user_nonadmin(req.user_id, req.group_id))
+}
+
+#[post("/leavegroup")]
+pub async fn leave_group(req: Json<LeaveGroup>, db: Data<Mutex<Db>>) -> impl Responder {
+    let mut db = db.lock().unwrap();
+    HttpResponse::Ok().json(db.leave_group(req.user_id, req.group_id))
 }
