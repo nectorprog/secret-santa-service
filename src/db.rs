@@ -175,4 +175,23 @@ impl Db {
             ..Default::default()
         }
     }
+    pub fn make_user_nonadmin(&mut self, user_id: i32, group_id: i32) -> Response<()> {
+        let has_other_admin = self.groups_users
+            .iter()
+            .any(|gu| gu.group_id == group_id && gu.user_id != user_id && gu.is_admin);
+        if !has_other_admin {
+            return Response {
+                status: false,
+                message: Some("В группе нет других администраторов".to_string()),
+                ..Default::default()
+            }
+        }
+        if let Some(gu) =  self.groups_users.iter_mut().find(|gu| gu.user_id == user_id && gu.group_id == group_id) {
+            gu.is_admin = false;
+        }
+        Response {
+            status: true,
+            ..Default::default()
+        }
+    }
 }

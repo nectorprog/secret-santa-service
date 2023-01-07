@@ -23,3 +23,9 @@ pub struct MakeUserAdmin {
     pub user_id: i32,
     pub group_id: i32,
 }
+
+#[derive(Deserialize)]
+pub struct MakeUserNonadmin {
+    pub user_id: i32,
+    pub group_id: i32,
+}

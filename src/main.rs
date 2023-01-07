@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use actix_web::{App, HttpServer};
 use db::Db;
 use actix_web::web::Data;
-use crate::handlers::{create_group, create_user, join_group, make_user_admin};
+use crate::handlers::{create_group, create_user, join_group, make_user_admin, make_user_nonadmin};
 
 #[actix_web::main]
 async fn main() {
@@ -19,6 +19,7 @@ async fn main() {
             .service(create_group)
             .service(join_group)
             .service(make_user_admin)
+            .service(make_user_nonadmin)
     })
         .bind(("127.0.0.1", 8000))
         .unwrap()
