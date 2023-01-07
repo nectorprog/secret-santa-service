@@ -93,4 +93,30 @@ impl Db {
             ..Default::default()
         }
     }
+    pub fn join_group(&mut self, user_id: i32, group_id: i32) -> Response<()> {
+        if self.find_user_by_id(user_id).is_none() {
+            return Response {
+                status: false,
+                message: Some("Не найден пользователь с таким id".to_string()),
+                ..Default::default()
+            }
+        };
+        if self.find_group_by_id(group_id).is_none() {
+            return Response {
+                status: false,
+                message: Some("Группа с таким id не найдена".to_string()),
+                ..Default::default()
+            }
+        };
+        if self.find_user_group(user_id, group_id).is_none() {
+            self.groups_users.push(GroupUser {
+                user_id, group_id,
+                is_admin: false
+            })
+        };
+        Response {
+            status: true,
+            ..Default::default()
+        }
+    }
 }
