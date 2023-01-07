@@ -16,3 +16,10 @@ pub struct JoinGroup {
     pub user_id: i32,
     pub group_id: i32,
 }
+
+#[derive(Deserialize)]
+pub struct MakeUserAdmin {
+    pub initiator_id: i32,
+    pub user_id: i32,
+    pub group_id: i32,
+}
