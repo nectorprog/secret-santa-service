@@ -1,7 +1,7 @@
 use actix_web::{Responder, HttpResponse, post};
 use actix_web::web::{Json, Data};
 use std::sync::Mutex;
-use crate::api_models::{CreateGroup, CreateUser, JoinGroup, LeaveGroup, MakeUserAdmin, MakeUserNonadmin, Response};
+use crate::api_models::{CreateGroup, CreateUser, JoinGroup, LeaveGroup, MakeUserAdmin, MakeUserNonadmin, RemoveGroup, Response};
 use crate::db::{Db};
 use serde::Serialize;
 
@@ -56,5 +56,12 @@ pub async fn make_user_nonadmin(req: Json<MakeUserNonadmin>, db: Data<Mutex<Db>>
 pub async fn leave_group(req: Json<LeaveGroup>, db: Data<Mutex<Db>>) -> impl Responder {
     let mut db = db.lock().unwrap();
     let resp = Response::<()>::from(db.leave_group(req.user_id, req.group_id));
+    HttpResponse::Ok().json(&resp)
+}
+
+#[post("/removegroup")]
+pub async fn remove_group(req: Json<RemoveGroup>, db: Data<Mutex<Db>>) -> impl Responder {
+    let mut db = db.lock().unwrap();
+    let resp = Response::<()>::from(db.remove_group(req.initiator_id, req.group_id));
     HttpResponse::Ok().json(&resp)
 }

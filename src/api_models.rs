@@ -74,3 +74,9 @@ pub struct LeaveGroup {
     pub user_id: i32,
     pub group_id: i32,
 }
+
+#[derive(Deserialize)]
+pub struct RemoveGroup {
+    pub initiator_id: i32,
+    pub group_id: i32,
+}
