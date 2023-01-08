@@ -120,9 +120,6 @@ impl Db {
         Ok(())
     }
     pub fn leave_group(&mut self, user_id: i32, group_id: i32) -> Result<(), Error> {
-        if !self.has_other_admin(user_id, group_id) {
-            return Err(Error::NoOtherAdminsInGroup { user_id, group_id })
-        }
         match self.find_group_by_id(group_id).map(|g| g.is_closed) {
             Some(true) => return Err(Error::GroupIsClosed(group_id)),
             None => return Err(Error::GroupNotFound(group_id)),
@@ -133,11 +130,11 @@ impl Db {
             .position(|gu| gu.user_id == user_id && gu.group_id == group_id);
         match index {
             Some(i) => {
-                if self.groups_users[i].is_admin {
+                if self.groups_users[i].is_admin && !self.has_other_admin(user_id, group_id) {
+                    Err(Error::NoOtherAdminsInGroup { user_id, group_id })
+                } else {
                     self.groups_users.swap_remove(i);
                     Ok(())
-                } else {
-                    Err(Error::UserIsNotAdmin {user_id, group_id})
                 }
             },
             None => Ok(())
