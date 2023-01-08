@@ -1,7 +1,7 @@
 use crate::models::{Group, GroupUser, Santa, User};
 use super::error::Error;
+use rand::Rng;
 use rand::rngs::OsRng;
-use rand::seq::SliceRandom;
 
 #[derive(Default)]
 pub struct Db {
@@ -145,6 +145,7 @@ impl Db {
         Ok(())
     }
     pub fn appoint_secret_santas(&mut self, initiator_id: i32, group_id: i32) -> Result<(), Error> {
+        self.santas.clear();
         self.check_user_is_admin(initiator_id, group_id)?;
         let user_ids = self.groups_users
             .iter()
@@ -156,11 +157,21 @@ impl Db {
                 }
             })
             .collect::<Vec<_>>();
-        let mut santa_ids = user_ids.clone();
-        santa_ids.shuffle(&mut OsRng);
-        for (user_id, santa_id) in user_ids.into_iter().zip(santa_ids.into_iter()) {
-            self.santas.push(Santa {user_id, santa_id})
+        let mut rng = OsRng;
+        let mut santas = user_ids.clone();
+        for &user_id in user_ids.iter() {
+            let user_index_in_santas = santas.iter().position(|&v| v == user_id );
+            if let Some(i) = user_index_in_santas {
+                santas.swap_remove(i);
+            }
+            let santa_index = rng.gen_range(0..santas.len());
+            let santa_id = santas.swap_remove(santa_index);
+            self.santas.push(Santa { user_id, santa_id });
+            if user_index_in_santas.is_some() {
+                santas.push(user_id);
+            }
         }
+
         let group = self.groups.iter_mut().find(|g| g.id == group_id)
             .expect("group exists");
         group.is_closed = true;
