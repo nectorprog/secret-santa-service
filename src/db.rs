@@ -61,7 +61,10 @@ impl Db {
     }
     pub fn join_group(&mut self, user_id: i32, group_id: i32) -> Result<(), Error> {
         self.find_user_by_id(user_id).ok_or(Error::UserNotFound(user_id))?;
-        self.find_group_by_id(group_id).ok_or(Error::GroupNotFound(group_id))?;
+        let group = self.find_group_by_id(group_id).ok_or(Error::GroupNotFound(group_id))?;
+        if group.is_closed {
+            return Err(Error::GroupIsClosed(group_id))
+        }
         if self.find_user_group(user_id, group_id).is_none() {
             self.groups_users.push(GroupUser {
                 user_id, group_id,
@@ -158,6 +161,19 @@ impl Db {
         for (user_id, santa_id) in user_ids.into_iter().zip(santa_ids.into_iter()) {
             self.santas.push(Santa {user_id, santa_id})
         }
+        let group = self.groups.iter_mut().find(|g| g.id == group_id)
+            .expect("group exists");
+        group.is_closed = true;
         Ok(())
+    }
+    pub fn whos_am_i_santa(&self, initiator_id: i32, group_id: i32) -> Result<i32, Error> {
+        let group = self.find_group_by_id(group_id)
+            .ok_or(Error::GroupNotFound(group_id))?;
+        if !group.is_closed {
+            return Err(Error::GroupIsNotClosed(group_id))
+        }
+        let res = self.santas.iter().find(|s| s.santa_id == initiator_id)
+            .expect("must be appointed as santa");
+        Ok(res.user_id)
     }
 }
