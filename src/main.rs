@@ -32,3 +32,23 @@ async fn main() {
         .await
         .unwrap();
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use actix_web::{test, web, App};
+//
+//     fn initialized_db() -> Data<Mutex<Db>> {
+//         let mut db = Db::default();
+//         db.create_user("first_user".to_string());
+//         db.create_user("second_user".to_string());
+//
+//     }
+//
+//     #[text]
+//     async fn create_user() {
+//         let app = test::init_service(
+//             App::new()
+//         )
+//     }
+// }

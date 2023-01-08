@@ -161,6 +161,9 @@ impl Db {
         for (user_id, santa_id) in user_ids.into_iter().zip(santa_ids.into_iter()) {
             self.santas.push(Santa {user_id, santa_id})
         }
+        let group = self.groups.iter_mut().find(|g| g.id == group_id)
+            .expect("group exists");
+        group.is_closed = true;
         Ok(())
     }
     pub fn whos_am_i_santa(&self, initiator_id: i32, group_id: i32) -> Result<i32, Error> {
