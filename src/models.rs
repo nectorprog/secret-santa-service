@@ -1,12 +1,12 @@
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Group {
     pub id: i32,
     pub name: String,
@@ -19,7 +19,7 @@ pub struct GroupUser {
     pub is_admin: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Santa {
     pub santa_id: i32,
     pub user_id: i32,
