@@ -1,7 +1,7 @@
 use crate::models::{Group, GroupUser, Santa, User};
 use super::error::Error;
+use rand::Rng;
 use rand::rngs::OsRng;
-use rand::seq::SliceRandom;
 
 #[derive(Default)]
 pub struct Db {
@@ -84,6 +84,11 @@ impl Db {
             None => Err(Error::UserIsNotInGroup {user_id, group_id })
         }
     }
+    fn check_user_in_group(&self, user_id: i32, group_id: i32) -> Result<(), Error> {
+        self.groups_users.iter().find(|gu| gu.user_id == user_id && gu.group_id == group_id)
+            .ok_or(Error::UserIsNotInGroup {user_id, group_id})
+            .map(|_| ())
+    }
     pub fn make_user_admin(&mut self, initiator_id: i32, user_id: i32, group_id: i32) -> Result<(), Error> {
         self.check_user_is_admin(initiator_id, group_id)?;
         match self.groups_users.iter_mut().find(|gu| gu.user_id == user_id && gu.group_id == group_id) {
@@ -145,7 +150,11 @@ impl Db {
         Ok(())
     }
     pub fn appoint_secret_santas(&mut self, initiator_id: i32, group_id: i32) -> Result<(), Error> {
+        self.santas.clear();
         self.check_user_is_admin(initiator_id, group_id)?;
+        let group = self.groups.iter_mut().find(|g| g.id == group_id)
+            .expect("group is exists");
+        group.is_closed = true;
         let user_ids = self.groups_users
             .iter()
             .filter_map(|gu| {
@@ -156,17 +165,37 @@ impl Db {
                 }
             })
             .collect::<Vec<_>>();
-        let mut santa_ids = user_ids.clone();
-        santa_ids.shuffle(&mut OsRng);
-        for (user_id, santa_id) in user_ids.into_iter().zip(santa_ids.into_iter()) {
-            self.santas.push(Santa {user_id, santa_id})
+        let mut rng = OsRng;
+        let mut santas = user_ids.clone();
+        let mut self_santa_user = None;
+        for &user_id in user_ids.iter() {
+            let user_index_in_santas = santas.iter().position(|&v| v == user_id );
+            if let Some(i) = user_index_in_santas {
+                santas.swap_remove(i);
+            }
+            if !santas.is_empty() {
+                let santa_index = rng.gen_range(0..santas.len());
+                let santa_id = santas.swap_remove(santa_index);
+                self.santas.push(Santa { user_id, santa_id });
+                if user_index_in_santas.is_some() {
+                    santas.push(user_id);
+                }
+            } else {
+                self_santa_user = Some(user_id);
+            }
         }
-        let group = self.groups.iter_mut().find(|g| g.id == group_id)
-            .expect("group exists");
-        group.is_closed = true;
+        if let Some(self_santa_user) = self_santa_user {
+            if !self.santas.is_empty() {
+                self.santas.push(Santa { user_id: self_santa_user, santa_id: self.santas[0].santa_id});
+                self.santas[0].santa_id = self_santa_user;
+            } else {
+                self.santas.push(Santa { user_id: self_santa_user, santa_id: self_santa_user })
+            }
+        }
         Ok(())
     }
     pub fn whos_am_i_santa(&self, initiator_id: i32, group_id: i32) -> Result<i32, Error> {
+        self.check_user_in_group(initiator_id, group_id)?;
         let group = self.find_group_by_id(group_id)
             .ok_or(Error::GroupNotFound(group_id))?;
         if !group.is_closed {
@@ -175,5 +204,11 @@ impl Db {
         let res = self.santas.iter().find(|s| s.santa_id == initiator_id)
             .expect("must be appointed as santa");
         Ok(res.user_id)
+    }
+    pub fn users(&self) -> &[User] {
+        &self.users
+    }
+    pub fn groups(&self) -> &[Group] {
+        &self.groups
     }
 }
