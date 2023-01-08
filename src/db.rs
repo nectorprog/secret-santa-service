@@ -187,4 +187,10 @@ impl Db {
             .expect("must be appointed as santa");
         Ok(res.user_id)
     }
+    pub fn users(&self) -> &[User] {
+        &self.users
+    }
+    pub fn groups(&self) -> &[Group] {
+        &self.groups
+    }
 }

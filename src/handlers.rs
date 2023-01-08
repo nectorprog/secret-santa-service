@@ -87,3 +87,15 @@ pub async fn whos_am_i_santa(query: Query<WhosAmISanta>, db: Data<Mutex<Db>>) ->
     );
     HttpResponse::Ok().json(&resp)
 }
+
+#[get("/users")]
+pub async fn get_users(db: Data<Mutex<Db>>) -> impl Responder {
+    let db = db.lock().unwrap();
+    HttpResponse::Ok().json(db.users())
+}
+
+#[get("/groups")]
+pub async fn get_groups(db: Data<Mutex<Db>>) -> impl Responder {
+    let db = db.lock().unwrap();
+    HttpResponse::Ok().json(db.groups())
+}

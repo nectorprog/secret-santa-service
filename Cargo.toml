@@ -1,7 +1,7 @@
 [package]
 name = "secret-santa"
 version = "0.1.0"
-authors = ["alxbavy <al3xander.bavykin@gmail.com>", "nectorprog <nector.dev@gmail.com>", "dtishkina <lfhmztshkn@gmail.com>", "rafoobustos <reich.rafoo@gmail.com>", "AeZG <gregorydyuldin@gmail.com>", "nikaNGC224 <veronika_rassokhina@mail.ru>"]
+authors = ["alxbavy <al3xander.bavykin@gmail.com>", "nectorprog <nector.dev@gmail.com>", "dtishkina <lfhmztshkn@gmail.com>", "rafoobustos <reich.rafoo@gmail.com>", "AeZG <gregorydyuldin@gmail.com>", "nikaNGC224 <veronika_rassokhina@mail.ru>", "friedNoodle1337 <sa.hei@mail.ru>"]
 edition = "2021"
 
 
